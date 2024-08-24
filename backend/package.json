@@ -11,6 +11,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "aws-serverless-express": "^3.4.0",
     "cors": "^2.8.5",
     "express": "^4.19.2",
     "serverless-http": "^3.2.0"
