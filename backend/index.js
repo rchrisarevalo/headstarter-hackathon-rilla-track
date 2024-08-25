@@ -66,7 +66,7 @@ const getAudioTranscription = async (file_path) => {
 // Insert record into table.
 const insertRecord = async (record) => {
   const params = {
-    TableName: "UserComments",
+    TableName: "User_Comments",
     Item: record,
   };
 
@@ -81,13 +81,13 @@ const insertRecord = async (record) => {
 // points.
 const retrieveRecord = async () => {
   const params = {
-    TableName: "UserComments",
+    TableName: "User_Comments",
     Key: {
       comment_id: "2",
     },
   };
 
-  return dynamoDBClient.get(params).promise();
+  return (await dynamoDBClient.scan(params).promise()).Items;
 };
 // ================================================
 
@@ -147,7 +147,8 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     console.log(insert_res)
 
     res.status(200).json(ai_res);
-  } catch {
+  } catch (error) {
+    console.log(error)
     res
       .status(500)
       .json({ message: "Failed to transcribe audio. Please try again." });

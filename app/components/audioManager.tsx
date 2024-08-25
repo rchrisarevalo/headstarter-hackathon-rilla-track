@@ -48,11 +48,11 @@ const AudioManager: React.FC = () => {
     const formData = new FormData();
     formData.append('file', file);
 
-    //await axios.post('/api/upload', formData);
+    await axios.post('http://localhost:3001/api/upload', formData);
 
-    //const response = await axios.get('/api/audios');
-    //setAudios(response.data);
-    //setSelectedAudio(response.data[0] || null);
+    // const response = await axios.get('http://localhost:3001/api/audios');
+    // setAudios(response.data);
+    // setSelectedAudio(response.data[0] || null);
   };
 
   const handleGenerateSummary = async () => {
