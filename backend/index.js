@@ -48,6 +48,7 @@ const getResponse = async (comments) => {
 
 // DynamoDB operations.
 // ================================================
+// Insert record into table.
 const insertRecord = async (record, client) => {
   const params = {
       TableName: 'UserComments',
@@ -61,6 +62,10 @@ const insertRecord = async (record, client) => {
   return dynamoDBClient.put(params).promise()
 }
 
+// Retrieve record from table storing user comments about
+// a transcript, as well as other information, such as
+// which portions of text should be highlighted as key
+// points.
 const retrieveRecord = async (record) => {
   const params = {
     TableName: 'UserComments',
