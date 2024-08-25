@@ -97,7 +97,7 @@ const AudioManager: React.FC = () => {
           )}
           </div>
         <div style={styles.section}>
-          <h2 style={styles.title}>Comments Summary</h2>
+          <h2 style={styles.title}>Feedback Summary</h2>
           {selectedAudio ? (
             <div style={styles.summaryBox as CSSProperties}>{selectedAudio.summary || 'No summary available'}</div>
           ) : (
