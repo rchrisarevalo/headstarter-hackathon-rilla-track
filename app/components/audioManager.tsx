@@ -54,9 +54,10 @@ const AudioManager: React.FC = () => {
 
   useEffect(() => {
     const fetchAudios = async () => {
-      const response = await axios.get('/api/audios');
-      setAudios(response.data);
-      setSelectedAudio(response.data[0] || null);
+      //const response = await axios.get('/api/audios');
+      //setAudios(response.data);
+      //setSelectedAudio(response.data[0] || null);
+      
       //setAllComments(response.data[0].comments || null);
     };
     fetchAudios();
@@ -84,11 +85,12 @@ const AudioManager: React.FC = () => {
     const formData = new FormData();
     formData.append('file', file);
 
-    await axios.post('/api/upload', formData);
+    //await axios.post('/api/upload', formData);
 
-    const response = await axios.get('/api/audios');
-    setAudios(response.data);
-    setSelectedAudio(response.data[0] || null);
+    //const response = await axios.get('/api/audios');
+    //setAudios(response.data);
+    //setSelectedAudio(response.data[0] || null);
+    
     //setAllComments([]);
   };
 
