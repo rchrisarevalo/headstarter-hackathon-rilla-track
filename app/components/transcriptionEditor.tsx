@@ -26,6 +26,10 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
       const start = calculateGlobalOffset(range.startContainer, range.startOffset);
       const end = calculateGlobalOffset(range.endContainer, range.endOffset);
 
+      console.log('Selection Text:', selection.toString());
+      console.log('Start Offset:', start);
+      console.log('End Offset:', end);
+
       if (start !== end) {
         setSelectionRange({ 
             start: Math.min(start, end), 
@@ -62,13 +66,15 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
       const nextHighlight = highlights[i];
       if (nextHighlight.start <= currentHighlight.end) {
         currentHighlight.end = Math.max(currentHighlight.end, nextHighlight.end);
-      } else {
+        //currentHighlight.comment += `; ${nextHighlight.comment}`;
+    } else {
         merged.push(currentHighlight);
         currentHighlight = nextHighlight;
       }
     }
 
     merged.push(currentHighlight);
+    console.log('Merged Highlights:', merged);
     return merged;
   };
 
@@ -78,6 +84,9 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
     const parts: JSX.Element[] = [];
 
     highlights.forEach(({ start, end, comment, type }, index) => {
+      console.log(`Rendering highlight ${index}: Start = ${start}, End = ${end}`);
+      start = start + lastIndex
+      end = end + lastIndex
       if (start > lastIndex) {
         parts.push(
           <span key={`text-${index}-before`}>
@@ -112,9 +121,12 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
     });
 
     if (lastIndex < text.length) {
-      parts.push(<span key="text-after">{text.slice(lastIndex)}</span>);
+      parts.push(<span key="text-after">
+        {text.slice(lastIndex)}
+        </span>);
     }
 
+    console.log('Rendered Parts:', parts);
     return parts;
   };
 
@@ -126,8 +138,11 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
         comment: currentComment,
         type: currentType,
       };
+      console.log('New Highlight to Add:', newHighlight);
+
       setHighlighted((prevHighlights) => {
         const updatedHighlights = mergeHighlights([...prevHighlights, newHighlight]);
+        console.log('Updated Highlights after Addition:', updatedHighlights);
         return updatedHighlights;
       });
       setCurrentComment('');
