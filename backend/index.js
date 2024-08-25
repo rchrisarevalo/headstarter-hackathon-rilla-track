@@ -1,157 +1,161 @@
 const express = require("express");
 const serverless = require("serverless-http");
-const openai = require('openai')
-const multer = require('multer')
-const AWS = require('aws-sdk');
+const openai = require("openai");
+const multer = require("multer");
+const AWS = require("aws-sdk");
+const path = require("path");
+const os = require("os");
+const fs = require("fs");
+const cors = require('cors');
 const port = 3001;
 const app = express();
 
 // Set up multer configuration.
-const storage = multer.memoryStorage()
-const upload = multer({ storage })
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 // Configure the region in which the instance is hosted at.
-AWS.config.update({ 
-  region: 'us-east-2',
+AWS.config.update({
+  region: "us-east-2",
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  sessionToken: process.env.AWS_SESSION_TOKEN
-})
+  sessionToken: process.env.AWS_SESSION_TOKEN,
+});
 
 // Set up DynanoDB client.
 const dynamoDBClient = new AWS.DynamoDB.DocumentClient();
 
 // Load environment variable files.
-require('dotenv').config()
+require("dotenv").config();
 
-app.use(express.json())
+app.use(express.json());
+app.use(cors())
 
 const ai_instance = new openai.OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-})
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 const getResponse = async (comments) => {
   const completion = await ai_instance.chat.completions.create({
     messages: [
       {
-        role: 'system',
-        content: process.env.SYSTEM_PROMPT
+        role: "system",
+        content: process.env.SYSTEM_PROMPT,
       },
-      ...comments
+      ...comments,
     ],
-    model: 'gpt-4o-mini',
-    response_format: { type: 'json_object' }
-  })
+    model: "gpt-4o-mini",
+    response_format: { type: "json_object" },
+  });
 
-  return JSON.parse(completion.choices[0].message.content)
-}
+  return JSON.parse(completion.choices[0].message.content);
+};
+
+const getAudioTranscription = async (file_path) => {
+  const audio_transcription = await ai_instance.audio.transcriptions.create({
+    file: fs.createReadStream(file_path),
+    model: "whisper-1",
+    language: "en",
+  });
+
+  return audio_transcription.text;
+};
 
 // DynamoDB operations.
 // ================================================
 // Insert record into table.
-const insertRecord = async (record, client) => {
+const insertRecord = async (record) => {
   const params = {
-      TableName: 'UserComments',
-      Item: {
-        comment_id: "3",
-        summary: "Customer considers filing a legal challenge against the owner of one of the products they buy regularly for false advertising.",
-        transcription: "The product I have been buying for years no longer does what I expected it to do. I am considering filing a complaint and a lawsuit for false advertising."
-      }
-  }
+    TableName: "UserComments",
+    Item: record,
+  };
 
-  return dynamoDBClient.put(params).promise()
-}
+  console.log(params)
+
+  return dynamoDBClient.put(params).promise();
+};
 
 // Retrieve record from table storing user comments about
 // a transcript, as well as other information, such as
 // which portions of text should be highlighted as key
 // points.
-const retrieveRecord = async (record) => {
+const retrieveRecord = async () => {
   const params = {
-    TableName: 'UserComments',
+    TableName: "UserComments",
     Key: {
-      comment_id: "2"
-    }
-  }
+      comment_id: "2",
+    },
+  };
 
-  return dynamoDBClient.get(params).promise()
-}
+  return dynamoDBClient.get(params).promise();
+};
 // ================================================
 
 app.get("/hello", (req, res) => {
   res.send("Hello World!");
 });
 
-app.get('/api/audios', async (req, res) => {
+app.get("/api/audios", async (req, res) => {
   // Database operations to retrieve audio data.
   // LOGIC HERE.
   try {
-    const ai_res = await getResponse([{
-      role: 'user',
-      content: 'Summarize the following transcript: This product does not do as it was advertised. I might consider filing a complaint and a lawsuit for false advertising.'
-    }])
-  
     // const prom = await insertRecord(ai_res, dynamoDBClient)
-    const retrieve_data = await retrieveRecord(ai_res)
+    const retrieve_data = await retrieveRecord();
 
-    console.log(retrieve_data)
-  
-    if (ai_res) {
-      return res.status(200).json({ summary: ai_res })
+    console.log(retrieve_data);
+
+    if (retrieve_data) {
+      return res.status(200).json({ summary: retrieve_data });
     } else {
-      return res.status(500).json({ summary: "Unable to retrieve AI response. Please try again." })
+      return res
+        .status(500)
+        .json({ summary: "Unable to retrieve AI response. Please try again." });
     }
   } catch (error) {
-    console.log(error)
-    return res.status(500).json({ summary: "Unable to run route."})
+    console.log(error);
+    return res.status(500).json({ summary: "Unable to run route." });
   }
+});
 
-  // return res.status(200).json([
-  //   {
-  //     id: "audio-file1",
-  //     name: "Introduction",
-  //     transcription: "My name is Ruben, and I am a software engineer fellow at Headstarter.",
-  //     summary: "Ruben is introducing himself as a software engineer.",
-  //     comments: [
-  //       {
-  //         text: "It is good!",
-  //         type: "positive",
-  //         highlight: [0, 10]
-  //       }
-  //     ]
-  //   },
-  //   {
-  //     id: "audio-file2",
-  //     name: "Bad Sales Review",
-  //     transcription: "This product does not do as it was advertised. I might consider filing a complaint and a lawsuit for false advertising.",
-  //     summary: "The customer is not happy with the product and is planning to take legal action against the seller and the product maker.",
-  //     comments: [
-  //       {
-  //         text: "It is a serious matter to attend to. You might want to consider pursuing appropriate legal action against them.",
-  //         type: "negative",
-  //         highlight: [10, 21]
-  //       }
-  //     ]
-  //   },
-  // ])
-})
-
-app.post('/api/upload', upload.single('file'), async (req, res) => {
+app.post("/api/upload", upload.single("file"), async (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ summary: "There was no file uploaded!" })
+    return res.status(400).json({ summary: "There was no file uploaded!" });
   }
 
   try {
-    // Database operations to upload the files or similar
-    // to DynamoDB.
+    // Create a buffer instance to store the temporary audio
+    // file in when feeding it to the OpenAI Whisper API.
+    const fileBuffer = req.file.buffer;
 
+    // Temporarily create a new file and save it in memory.
+    const tempFilePath = path.join(
+      os.tmpdir(),
+      "uploaded_transcript_audio.m4a"
+    );
+    fs.writeFileSync(tempFilePath, fileBuffer);
+
+    const transcribed_text = await getAudioTranscription(tempFilePath);
+
+    const ai_res = await getResponse([
+      {
+        role: "user",
+        content: `Summarize the following transcript: ${transcribed_text}`,
+      },
+    ]);
+
+    const insert_res = await insertRecord(ai_res)
+    console.log(insert_res)
+
+    res.status(200).json(ai_res);
   } catch {
-
+    res
+      .status(500)
+      .json({ message: "Failed to transcribe audio. Please try again." });
   }
-})
+});
 
 app.listen(port, () => {
-  console.log(`You are listening to port ${port}!`)
-})
+  console.log(`You are listening to port ${port}!`);
+});
 
 module.exports.handler = serverless(app);
