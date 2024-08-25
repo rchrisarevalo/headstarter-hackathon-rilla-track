@@ -14,7 +14,6 @@ interface HighlightedText {
 
 const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
   const [highlighted, setHighlighted] = useState<HighlightedText[]>([]);
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [currentComment, setCurrentComment] = useState('');
   const [currentType, setCurrentType] = useState<'positive' | 'negative'>('positive');
@@ -28,7 +27,9 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
       const end = calculateGlobalOffset(range.endContainer, range.endOffset);
 
       if (start !== end) {
-        setSelectionRange({ start: Math.min(start, end), end: Math.max(start, end) });
+        setSelectionRange({ 
+            start: Math.min(start, end), 
+            end: Math.max(start, end) });
         setShowModal(true); // Show modal for user input
       }
 
@@ -79,7 +80,9 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
     highlights.forEach(({ start, end, comment, type }, index) => {
       if (start > lastIndex) {
         parts.push(
-          <span key={`text-${index}-before`}>{text.slice(lastIndex, start)}</span>
+          <span key={`text-${index}-before`}>
+            {text.slice(lastIndex, start)}
+            </span>
         );
       }
       parts.push(
@@ -89,7 +92,9 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
           overlay={
             <Popover>
               <Popover.Body>
-                <strong>{type.toUpperCase()}</strong>: {comment}
+                <strong>
+                    {type.toUpperCase()}
+                </strong>: {comment}
               </Popover.Body>
             </Popover>
           }
@@ -125,8 +130,9 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
         const updatedHighlights = mergeHighlights([...prevHighlights, newHighlight]);
         return updatedHighlights;
       });
-      setCurrentComment(''); // Reset comment input
-      setShowModal(false); // Close modal
+      setCurrentComment('');
+      setSelectionRange(null);
+      setShowModal(false);
     }
   };
 
