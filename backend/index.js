@@ -82,13 +82,21 @@ const insertRecord = async (record) => {
 const retrieveRecord = async () => {
   const params = {
     TableName: "User_Comments",
-    Key: {
-      comment_id: "2",
-    },
   };
 
   return (await dynamoDBClient.scan(params).promise()).Items;
 };
+
+// Retrieve a specific sales transcript from the DynamoDB
+// table.
+const retrieveIDRecord = async (audio_id) => {
+  const params = {
+    TableName: 'User_Comments',
+    Key: `${audio_id}`
+  };
+
+  return dynamoDBClient.get(params).promise()
+}
 // ================================================
 
 app.get("/hello", (req, res) => {
@@ -102,10 +110,8 @@ app.get("/api/audios", async (req, res) => {
     // const prom = await insertRecord(ai_res, dynamoDBClient)
     const retrieve_data = await retrieveRecord();
 
-    console.log(retrieve_data);
-
     if (retrieve_data) {
-      return res.status(200).json({ summary: retrieve_data });
+      return res.status(200).json(retrieve_data);
     } else {
       return res
         .status(500)
@@ -116,6 +122,21 @@ app.get("/api/audios", async (req, res) => {
     return res.status(500).json({ summary: "Unable to run route." });
   }
 });
+
+app.post("/api/audios/:audioID/summary", async (req, res) => {
+  const id = await req.params.audioID
+
+  try {
+    const retrieve_ID_record = await retrieveIDRecord(id)
+    
+    if (retrieve_ID_record) {
+      return res.status(200).json(retrieve_ID_record)
+    }
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({ summary: "Unable to retrieve transcript record." })
+  }
+})
 
 app.post("/api/upload", upload.single("file"), async (req, res) => {
   if (!req.file) {

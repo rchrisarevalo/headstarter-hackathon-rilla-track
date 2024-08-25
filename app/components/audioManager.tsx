@@ -9,7 +9,7 @@ type Audio = {
     transcription?: string;
     summary?: string;
     comments?: Comment[];
-  };  
+};
 
 const AudioManager: React.FC = () => {
   const [audios, setAudios] = useState<Audio[]>([
@@ -50,16 +50,16 @@ const AudioManager: React.FC = () => {
 
     await axios.post('http://localhost:3001/api/upload', formData);
 
-    // const response = await axios.get('http://localhost:3001/api/audios');
-    // setAudios(response.data);
-    // setSelectedAudio(response.data[0] || null);
+    const response = await axios.get('http://localhost:3001/api/audios');
+    setAudios(response.data);
+    setSelectedAudio(response.data[0] || null);
   };
 
   const handleGenerateSummary = async () => {
     if (selectedAudio) {
-      //const response = await axios.post(`/api/audios/${selectedAudio.id}/summary`, { comments });
-      //const summary = response.data.summary;
-      //setSelectedAudio({ ...selectedAudio, summary });
+      // const response = await axios.post(`/api/audios/${selectedAudio.id}/summary`, { comments });
+      // const summary = response.data.summary;
+      // setSelectedAudio({ ...selectedAudio, summary });
     }
   };
 
