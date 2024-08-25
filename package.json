@@ -8,13 +8,22 @@
     "start": "next start",
     "lint": "next lint"
   },
+  "type": "module",
   "dependencies": {
     "axios": "^1.7.5",
     "bootstrap": "^5.3.3",
     "next": "14.2.6",
     "react": "^18.3.1",
     "react-bootstrap": "^2.10.4",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
+    "next": "14.2.6",
+    "openai": "^4.56.0",
+    "react": "^18",
+    "react-dom": "^18",
+    "serverless-http": "^3.2.0"
   },
   "devDependencies": {
     "@types/multer": "^1.4.12",
