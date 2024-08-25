@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Popover, OverlayTrigger, Button, Modal, Form } from 'react-bootstrap';
+import { v4 as uuidv4 } from 'uuid';
 
 interface TranscriptEditorProps {
   text: string;
 }
 
 interface HighlightedText {
+  id: string;
   start: number;
   end: number;
   comment: string;
@@ -18,6 +20,7 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
   const [currentComment, setCurrentComment] = useState('');
   const [currentType, setCurrentType] = useState<'positive' | 'negative'>('positive');
   const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
+  const [editingHighlightId, setEditingHighlightId] = useState<string | null>(null);
 
   const handleTextSelection = () => {
     const selection = window.getSelection();
@@ -34,7 +37,11 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
         setSelectionRange({ 
             start: Math.min(start, end), 
             end: Math.max(start, end) });
-        setShowModal(true); // Show modal for user input
+        
+        setCurrentComment('');
+        setCurrentType('positive');
+        setEditingHighlightId(null);
+        setShowModal(true);
       }
 
       selection.removeAllRanges(); // Clear selection after processing
@@ -51,6 +58,7 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
         totalOffset += (node as HTMLElement).innerText.length;
       }
     }
+    console.log('Total Offset:', totalOffset);
     return totalOffset;
   };
 
@@ -64,7 +72,7 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
 
     for (let i = 1; i < highlights.length; i++) {
       const nextHighlight = highlights[i];
-      if (nextHighlight.start <= currentHighlight.end) {
+      if (nextHighlight.start <= currentHighlight.end && nextHighlight.start > currentHighlight.start) {
         currentHighlight.end = Math.max(currentHighlight.end, nextHighlight.end);
         //currentHighlight.comment += `; ${nextHighlight.comment}`;
     } else {
@@ -83,7 +91,7 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
     let lastIndex = 0;
     const parts: JSX.Element[] = [];
 
-    highlights.forEach(({ start, end, comment, type }, index) => {
+    highlights.forEach(({ start, end, comment, type, id }, index) => {
       console.log(`Rendering highlight ${index}: Start = ${start}, End = ${end}`);
       start = start + lastIndex
       end = end + lastIndex
@@ -109,9 +117,12 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
           }
         >
           <mark
+            key={`highlight-${index}`}
             style={{
               backgroundColor: type === 'positive' ? 'lightgreen' : 'lightcoral',
+              cursor: 'pointer'
             }}
+            onClick={() => handleHighlightClick(id)}
           >
             {text.slice(start, end)}
           </mark>
@@ -131,10 +142,18 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
   };
 
   const handleCommentSubmit = () => {
-    if (selectionRange) {
+    if (editingHighlightId) {
+        setHighlighted((prevHighlights) => prevHighlights.map((highlight) =>
+            highlight.id === editingHighlightId
+              ? { ...highlight, comment: currentComment, type: currentType }
+              : highlight
+          ));
+    }
+    else {
       const newHighlight: HighlightedText = {
-        start: selectionRange.start,
-        end: selectionRange.end,
+        id: uuidv4(),
+        start: selectionRange!.start,
+        end: selectionRange!.end,
         comment: currentComment,
         type: currentType,
       };
@@ -144,11 +163,24 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
         const updatedHighlights = mergeHighlights([...prevHighlights, newHighlight]);
         console.log('Updated Highlights after Addition:', updatedHighlights);
         return updatedHighlights;
-      });
+      })};
       setCurrentComment('');
       setSelectionRange(null);
       setShowModal(false);
+  };
+
+  const handleHighlightClick = (id: string) => {
+    const highlight = highlighted.find((h) => h.id === id);
+    if (highlight) {
+      setCurrentComment(highlight.comment);
+      setCurrentType(highlight.type);
+      setEditingHighlightId(id);
+      setShowModal(true);
     }
+  };
+
+  const handleDeleteHighlight = (id: string) => {
+    setHighlighted((prevHighlights) => prevHighlights.filter((highlight) => highlight.id !== id));
   };
 
   return (
@@ -161,10 +193,10 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
         {renderHighlightedText(text)}
       </div>
 
-      {/* Modal for adding comments */}
+
       <Modal show={showModal} onHide={() => setShowModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>Add Comment</Modal.Title>
+          <Modal.Title>{editingHighlightId ? 'Edit Comment' : 'Add Comment'}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>
@@ -173,28 +205,21 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
               <Form.Control
                 type="text"
                 placeholder="Enter your comment"
+                required
                 value={currentComment}
                 onChange={(e) => setCurrentComment(e.target.value)}
               />
             </Form.Group>
             <Form.Group controlId="commentType">
               <Form.Label>Type</Form.Label>
-              <Form.Check
-                type="radio"
-                label="Positive"
-                name="commentType"
-                value="positive"
-                checked={currentType === 'positive'}
-                onChange={() => setCurrentType('positive')}
-              />
-              <Form.Check
-                type="radio"
-                label="Negative"
-                name="commentType"
-                value="negative"
-                checked={currentType === 'negative'}
-                onChange={() => setCurrentType('negative')}
-              />
+              <Form.Control
+                as="select"
+                value={currentType}
+                onChange={(e) => setCurrentType(e.target.value as 'positive' | 'negative')}
+              >
+                <option value="positive">Positive</option>
+                <option value="negative">Negative</option>
+              </Form.Control>
             </Form.Group>
           </Form>
         </Modal.Body>
@@ -203,8 +228,16 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
             Cancel
           </Button>
           <Button variant="primary" onClick={handleCommentSubmit}>
-            Save Comment
+            Save
           </Button>
+          {editingHighlightId && (
+            <Button variant="danger" onClick={() => {
+              handleDeleteHighlight(editingHighlightId);
+              setShowModal(false);
+            }}>
+              Delete
+            </Button>
+          )}
         </Modal.Footer>
       </Modal>
     </div>
