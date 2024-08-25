@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Popover, OverlayTrigger, Button, Modal, Form } from 'react-bootstrap';
 
 interface TranscriptEditorProps {
   text: string;
@@ -7,35 +8,30 @@ interface TranscriptEditorProps {
 interface HighlightedText {
   start: number;
   end: number;
+  comment: string;
+  type: 'positive' | 'negative';
 }
 
 const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
   const [highlighted, setHighlighted] = useState<HighlightedText[]>([]);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [currentComment, setCurrentComment] = useState('');
+  const [currentType, setCurrentType] = useState<'positive' | 'negative'>('positive');
+  const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
 
   const handleTextSelection = () => {
     const selection = window.getSelection();
     if (selection && selection.toString()) {
       const range = selection.getRangeAt(0);
-      
       const start = calculateGlobalOffset(range.startContainer, range.startOffset);
       const end = calculateGlobalOffset(range.endContainer, range.endOffset);
 
-
-      console.log('Selection:', selection.toString());
-      console.log('Range:', { start, end });
-      
       if (start !== end) {
-        const newHighlight: HighlightedText = {
-          start: Math.min(start, end),
-          end: Math.max(start, end),
-        };
-        console.log('New Highlight:', newHighlight);
-        setHighlighted((prevHighlights) => {
-          const updatedHighlights = mergeHighlights([...prevHighlights, newHighlight]);
-          console.log('Updated Highlights:', updatedHighlights);
-          return updatedHighlights;
-        });
+        setSelectionRange({ start: Math.min(start, end), end: Math.max(start, end) });
+        setShowModal(true); // Show modal for user input
       }
+
       selection.removeAllRanges(); // Clear selection after processing
     }
   };
@@ -53,7 +49,6 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
     return totalOffset;
   };
 
-  // Function to merge overlapping or adjacent highlights
   const mergeHighlights = (highlights: HighlightedText[]): HighlightedText[] => {
     if (highlights.length === 0) return [];
 
@@ -65,7 +60,6 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
     for (let i = 1; i < highlights.length; i++) {
       const nextHighlight = highlights[i];
       if (nextHighlight.start <= currentHighlight.end) {
-        // Merge overlapping or adjacent highlights
         currentHighlight.end = Math.max(currentHighlight.end, nextHighlight.end);
       } else {
         merged.push(currentHighlight);
@@ -77,40 +71,63 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
     return merged;
   };
 
-  // Render the text with highlights
   const renderHighlightedText = (text: string): JSX.Element[] => {
     const highlights = mergeHighlights(highlighted);
-    console.log('Text Length:', text.length);
-    console.log('Highlights:', highlights);
-    
     let lastIndex = 0;
     const parts: JSX.Element[] = [];
 
-    highlights.forEach(({ start, end }, index) => {
-        start = start + lastIndex
-        end = end + lastIndex
+    highlights.forEach(({ start, end, comment, type }, index) => {
       if (start > lastIndex) {
         parts.push(
-        <span key={`text-${index}-before`}>
-            {text.slice(lastIndex, start)}
-            </span>);
+          <span key={`text-${index}-before`}>{text.slice(lastIndex, start)}</span>
+        );
       }
       parts.push(
-        <mark key={`highlight-${index}`} style={{ backgroundColor: 'yellow' }}>
-          {text.slice(start, end)}
-        </mark>
+        <OverlayTrigger
+          key={`highlight-${index}`}
+          placement="top"
+          overlay={
+            <Popover>
+              <Popover.Body>
+                <strong>{type.toUpperCase()}</strong>: {comment}
+              </Popover.Body>
+            </Popover>
+          }
+        >
+          <mark
+            style={{
+              backgroundColor: type === 'positive' ? 'lightgreen' : 'lightcoral',
+            }}
+          >
+            {text.slice(start, end)}
+          </mark>
+        </OverlayTrigger>
       );
       lastIndex = end;
     });
 
     if (lastIndex < text.length) {
-        parts.push(
-        <span key="text-after">
-          {text.slice(lastIndex)}
-        </span>);
-      }
+      parts.push(<span key="text-after">{text.slice(lastIndex)}</span>);
+    }
 
     return parts;
+  };
+
+  const handleCommentSubmit = () => {
+    if (selectionRange) {
+      const newHighlight: HighlightedText = {
+        start: selectionRange.start,
+        end: selectionRange.end,
+        comment: currentComment,
+        type: currentType,
+      };
+      setHighlighted((prevHighlights) => {
+        const updatedHighlights = mergeHighlights([...prevHighlights, newHighlight]);
+        return updatedHighlights;
+      });
+      setCurrentComment(''); // Reset comment input
+      setShowModal(false); // Close modal
+    }
   };
 
   return (
@@ -122,6 +139,53 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ text }) => {
       >
         {renderHighlightedText(text)}
       </div>
+
+      {/* Modal for adding comments */}
+      <Modal show={showModal} onHide={() => setShowModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Add Comment</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group controlId="commentText">
+              <Form.Label>Comment</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="Enter your comment"
+                value={currentComment}
+                onChange={(e) => setCurrentComment(e.target.value)}
+              />
+            </Form.Group>
+            <Form.Group controlId="commentType">
+              <Form.Label>Type</Form.Label>
+              <Form.Check
+                type="radio"
+                label="Positive"
+                name="commentType"
+                value="positive"
+                checked={currentType === 'positive'}
+                onChange={() => setCurrentType('positive')}
+              />
+              <Form.Check
+                type="radio"
+                label="Negative"
+                name="commentType"
+                value="negative"
+                checked={currentType === 'negative'}
+                onChange={() => setCurrentType('negative')}
+              />
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleCommentSubmit}>
+            Save Comment
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

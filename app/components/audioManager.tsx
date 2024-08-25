@@ -1,14 +1,7 @@
 import React, { useState, useEffect, CSSProperties } from 'react';
 import axios from 'axios';
-import { Popover, OverlayTrigger, Button } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import TranscriptEditor from './transcriptionEditor';
-
-type Comment = {
-  text: string;
-  type: 'positive' | 'negative';
-  highlight: [number, number];
-}
 
 type Audio = {
     id: string; // or number, depending on your data
@@ -19,63 +12,33 @@ type Audio = {
   };  
 
 const AudioManager: React.FC = () => {
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [audios, setAudios] = useState<Audio[]>([
     {
       id: '1',
       name: 'Sample Audio 1',
       transcription: 'This is a sample transcription for audio 1. It contains some example text to illustrate how the transcription will appear on the frontend.',
       summary: 'This is a summary of the sample transcription for audio 1.',
-      comments: [
-        { text: 'Great audio!', type: 'positive', highlight: [0, 4] },
-        { text: 'Interesting points about the subject.', type: 'positive', highlight: [22, 35] },
-        { text: 'Could use more details.', type: 'negative', highlight: [51, 62] }
-      ],
     },
     {
       id: '2',
       name: 'Sample Audio 2',
       transcription: 'This is a sample transcription for audio 2. It also contains example text for demonstration purposes.',
       summary: 'Summary for the second sample audio.',
-      comments: [
-        { text: 'Needs more details.', type: 'negative', highlight: [10, 21] },
-        { text: 'Very clear and concise.', type: 'positive', highlight: [27, 37] }
-      ],
     },
   ]);
   const [selectedAudio, setSelectedAudio] = useState<Audio | null>(audios[0] || null);
-  const [hoveredComment, setHoveredComment] = useState<string | null>(null);
-  //const [allComments, setAllComments] = useState<Comment[] | []> ();
-  const [newCommentText, setNewCommentText] = useState('');
-  const [commentType, setCommentType] = useState<'positive' | 'negative'>('positive');
-  const [selectionRange, setSelectionRange] = useState<[number, number] []>([]);
-  //const [selectedText, setSelectedText] = useState<string | null>(null);
-  //const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchAudios = async () => {
       //const response = await axios.get('/api/audios');
       //setAudios(response.data);
       //setSelectedAudio(response.data[0] || null);
-      
-      //setAllComments(response.data[0].comments || null);
     };
     fetchAudios();
   }, []);
 
-  //useEffect(() => {
-  //  if (selectedAudio) {
-  //    setHoveredComment(null);
-  //  }
-  //}, [selectedAudio]);
-
   const handleAudioClick = (audio: Audio) => {
     setSelectedAudio(audio);
-    //setAllComments(audio.comments);
-    setHoveredComment(null);
-    setNewCommentText('');
-    setCommentType('positive');
-    setSelectionRange([]);
   };
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,42 +53,7 @@ const AudioManager: React.FC = () => {
     //const response = await axios.get('/api/audios');
     //setAudios(response.data);
     //setSelectedAudio(response.data[0] || null);
-    
-    //setAllComments([]);
   };
-
-  const handleAddComment = async () => {
-    if (selectedAudio && selectionRange.length > 0 && newCommentText.trim()) {
-      const updatedComments = [
-        ...(selectedAudio.comments || []),
-        ...selectionRange.map((range) => ({
-        text: newCommentText, 
-        type: commentType, 
-        highlight: range as [number, number]}))
-      ];
-      const updatedAudio = { ...selectedAudio, comments: updatedComments };
-
-      //setAllComments(updatedComments);
-      setSelectedAudio(updatedAudio);
-      setAudios((prevAudios) =>
-        prevAudios.map((audio) => (audio.id === selectedAudio.id ? updatedAudio : audio))
-      );
-
-      setNewCommentText('');
-      setSelectionRange([]);
-      setIsPopoverOpen(false);
-
-      await handleGenerateSummary();
-    }
-  };
-
-  const handleEditComment = (comment: Comment) => {
-    // ... your edit comment logic
-};
-
-const handleDeleteComment = (comment: Comment) => {
-    // ... your delete comment logic
-};
 
   const handleGenerateSummary = async () => {
     if (selectedAudio) {
@@ -135,50 +63,8 @@ const handleDeleteComment = (comment: Comment) => {
     }
   };
 
-  const popover = (
-    <Popover id="popover-basic">
-      <Popover.Header as="h3">Add Comment</Popover.Header>
-      <Popover.Body>
-        <textarea
-          value={newCommentText}
-          onChange={(e) => setNewCommentText(e.target.value)}
-          placeholder="Add a comment..."
-          style={{ width: '200px', height: '60px', padding: '5px' }}
-        />
-        <div style={{ marginTop: '5px' }}>
-          <label>
-            <input
-              type="radio"
-              value="positive"
-              checked={commentType === 'positive'}
-              onChange={() => setCommentType('positive')}
-            />
-            Positive
-          </label>
-          <label style={{ marginLeft: '10px' }}>
-            <input
-              type="radio"
-              value="negative"
-              checked={commentType === 'negative'}
-              onChange={() => setCommentType('negative')}
-            />
-            Negative
-          </label>
-        </div>
-        <Button
-          variant="primary"
-          onClick={handleAddComment}
-          style={{ marginTop: '10px' }}
-        >
-          Add Comment
-        </Button>
-      </Popover.Body>
-    </Popover>
-  );
-
   return (
     <div style={styles.container}>
-      {/* Sidebar for Audio List */}
       <div style={styles.sidebar}>
         <input
           type="file"
@@ -201,7 +87,6 @@ const handleDeleteComment = (comment: Comment) => {
         </div>
       </div>
 
-      {/* Dashboard for Transcription, Comments, and Summary */}
       <div style={styles.dashboard as CSSProperties}>
         <div style={styles.section}>
           <h2 style={styles.title}>Transcription for {selectedAudio?.name}</h2>
@@ -209,9 +94,6 @@ const handleDeleteComment = (comment: Comment) => {
             <TranscriptEditor text={selectedAudio.transcription ?? ''} />
           ) : (
             <div style={styles.selectPrompt}>Select an audio to view its transcription</div>
-          )}
-          {hoveredComment && (
-            <div style={styles.hoverCommentBox}>{hoveredComment}</div>
           )}
           </div>
         <div style={styles.section}>
@@ -285,15 +167,6 @@ const styles = {
     marginBottom: '20px',
     width: '100%',
   },
-  transcriptionBox: {
-    padding: '15px',
-    border: '1px solid #ddd',
-    borderRadius: '5px',
-    backgroundColor: '#f9f9f9',
-    minHeight: '200px',
-    whiteSpace: 'pre-wrap' as 'pre-wrap',
-    overflowY: 'auto',
-  },
   summaryBox: {
     padding: '15px',
     border: '1px solid #ddd',
@@ -305,55 +178,6 @@ const styles = {
     textAlign: 'center' as 'center',
     padding: '50px',
     color: '#888',
-  },
-  commentInput: {
-    marginTop: '20px',
-  },
-  commentTextarea: {
-    width: '100%',
-    height: '80px',
-    padding: '10px',
-    borderRadius: '5px',
-    border: '1px solid #ddd',
-    fontSize: '16px',
-  },
-  addButton: {
-    marginTop: '10px',
-    padding: '10px 20px',
-    border: 'none',
-    borderRadius: '5px',
-    backgroundColor: '#0070f3',
-    color: '#fff',
-    cursor: 'pointer',
-    transition: 'background-color 0.3s ease',
-  },
-  radioLabel: {
-    marginRight: '15px',
-  },
-  radioInput: {
-    marginRight: '5px',
-  },
-  generateSummaryButton: {
-    marginTop: '10px',
-    marginLeft: '10px',
-    padding: '10px 20px',
-    border: 'none',
-    borderRadius: '5px',
-    backgroundColor: '#0070f3',
-    color: '#fff',
-    cursor: 'pointer',
-    transition: 'background-color 0.3s ease',
-  },
-  hoverCommentBox: {
-    padding: '10px',
-    backgroundColor: '#fff',
-    border: '1px solid #ddd',
-    borderRadius: '5px',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-    top: '0',
-    left: '0',
-    zIndex: 10,
-    fontSize: '14px',
   },
 };
 
