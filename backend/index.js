@@ -2,12 +2,24 @@ const express = require("express");
 const serverless = require("serverless-http");
 const openai = require('openai')
 const multer = require('multer')
+const AWS = require('aws-sdk');
 const port = 3001;
 const app = express();
 
 // Set up multer configuration.
 const storage = multer.memoryStorage()
 const upload = multer({ storage })
+
+// Configure the region in which the instance is hosted at.
+AWS.config.update({ 
+  region: 'us-east-2',
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  sessionToken: process.env.AWS_SESSION_TOKEN
+})
+
+// Set up DynanoDB client.
+const dynamoDBClient = new AWS.DynamoDB.DocumentClient();
 
 // Load environment variable files.
 require('dotenv').config()
@@ -34,6 +46,33 @@ const getResponse = async (comments) => {
   return JSON.parse(completion.choices[0].message.content)
 }
 
+// DynamoDB operations.
+// ================================================
+const insertRecord = async (record, client) => {
+  const params = {
+      TableName: 'UserComments',
+      Item: {
+        comment_id: "3",
+        summary: "Customer considers filing a legal challenge against the owner of one of the products they buy regularly for false advertising.",
+        transcription: "The product I have been buying for years no longer does what I expected it to do. I am considering filing a complaint and a lawsuit for false advertising."
+      }
+  }
+
+  return dynamoDBClient.put(params).promise()
+}
+
+const retrieveRecord = async (record) => {
+  const params = {
+    TableName: 'UserComments',
+    Key: {
+      comment_id: "2"
+    }
+  }
+
+  return dynamoDBClient.get(params).promise()
+}
+// ================================================
+
 app.get("/hello", (req, res) => {
   res.send("Hello World!");
 });
@@ -41,15 +80,25 @@ app.get("/hello", (req, res) => {
 app.get('/api/audios', async (req, res) => {
   // Database operations to retrieve audio data.
   // LOGIC HERE.
-  const ai_res = await getResponse([{
-    role: 'user',
-    content: 'Summarize the following transcript: This product does not do as it was advertised. I might consider filing a complaint and a lawsuit for false advertising.'
-  }])
+  try {
+    const ai_res = await getResponse([{
+      role: 'user',
+      content: 'Summarize the following transcript: This product does not do as it was advertised. I might consider filing a complaint and a lawsuit for false advertising.'
+    }])
+  
+    // const prom = await insertRecord(ai_res, dynamoDBClient)
+    const retrieve_data = await retrieveRecord(ai_res)
 
-  if (ai_res) {
-    return res.status(200).json({ summary: ai_res })
-  } else {
-    return res.status(500).json({ summary: "Unable to retrieve AI response. Please try again." })
+    console.log(retrieve_data)
+  
+    if (ai_res) {
+      return res.status(200).json({ summary: ai_res })
+    } else {
+      return res.status(500).json({ summary: "Unable to retrieve AI response. Please try again." })
+    }
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({ summary: "Unable to run route."})
   }
 
   // return res.status(200).json([
@@ -87,8 +136,13 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     return res.status(400).json({ summary: "There was no file uploaded!" })
   }
 
-  // Database operations to upload the files or similar
-  // to DynamoDB.
+  try {
+    // Database operations to upload the files or similar
+    // to DynamoDB.
+
+  } catch {
+
+  }
 })
 
 app.listen(port, () => {
